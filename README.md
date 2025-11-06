@@ -1,1 +1,0 @@
-# Ripeseed Training
