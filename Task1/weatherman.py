@@ -1,14 +1,13 @@
 import argparse
 import os
-from parser.file_parser import parse_weather_file
-from calculations.calculator import Calculations
-from reports.reports_generator import Reports
+from calculations import calculator
+from reports import reports_generator
 from utils.helpers import get_files_for_year, get_files_for_month,load_year_data,load_month_data,parse_year_month
 
 
 def main():
-    reports_obj = Reports()
-    calculations_obj = Calculations()
+    reports_obj = reports_generator.Reports()
+    calculations_obj = calculator.Calculations()
     parser = argparse.ArgumentParser()
     parser.add_argument('data_dir')
     parser.add_argument('-e', type=int, dest='yearly_year')
