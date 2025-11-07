@@ -51,7 +51,7 @@ class Reports:
             if reading.max_temp is not None and reading.min_temp is not None:
                 temp_max = int(reading.max_temp)
                 temp_low = int(reading.min_temp)
-                bar = blue + '+' * temp_low + reset + red + '+' * (temp_max - temp_low) + reset
+                bar = blue + '+' * temp_low + reset + red + '+' * temp_max  + reset
                 print(f"{day:02d} {bar} {temp_low}C - {temp_max}C")
 
 
