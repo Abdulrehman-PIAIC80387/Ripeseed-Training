@@ -4,6 +4,12 @@ from utils.helpers import fetch_day_string, fetch_month_string
 
 class Reports:
     
+    def __init__(self):
+        self.red = '\033[91m'
+        self.blue = '\033[94m'
+        self.reset = '\033[0m'
+    
+    
     def print_bar_chart(self, readings):
         if len(readings) == 0:
             return
@@ -12,9 +18,6 @@ class Reports:
         month_name = first_date.strftime("%B")
         year = first_date.year
         sorted_readings = sorted(readings, key=lambda r: datetime.strptime(r.date, '%Y-%m-%d').date())
-        red = '\033[91m'
-        blue = '\033[94m'
-        reset = '\033[0m'
         
         for reading in sorted_readings:
             date = reading.date
@@ -22,12 +25,12 @@ class Reports:
             
             if reading.max_temp is not None:
                 temp = int(reading.max_temp)
-                bar = red + '+' * temp + reset
+                bar = self.red + '+' * temp + self.reset
                 print(f"{day:02d} {bar} {temp}C")
             
             if reading.min_temp is not None:
                 temp = int(reading.min_temp)
-                bar = blue + '+' * temp + reset
+                bar = self.blue + '+' * temp + self.reset
                 print(f"{day:02d} {bar} {temp}C")
 
 
@@ -39,10 +42,6 @@ class Reports:
         month_name = first_date.strftime("%B")
         year = first_date.year
         sorted_readings = sorted(readings, key=lambda r: datetime.strptime(r.date, '%Y-%m-%d').date())
-
-        red = '\033[91m'
-        blue = '\033[94m'
-        reset = '\033[0m'
         
         for reading in sorted_readings:
             date = reading.date
@@ -51,9 +50,8 @@ class Reports:
             if reading.max_temp is not None and reading.min_temp is not None:
                 temp_max = int(reading.max_temp)
                 temp_low = int(reading.min_temp)
-                bar = blue + '+' * temp_low + reset + red + '+' * temp_max  + reset
+                bar = self.blue + '+' * temp_low + self.reset + self.red + '+' * temp_max  + self.reset
                 print(f"{day:02d} {bar} {temp_low}C - {temp_max}C")
-
 
 
     def print_monthly_averages_report(self, averages): 
@@ -63,7 +61,6 @@ class Reports:
             print(f"Lowest Average: {round(averages.avg_lowest_temp,2)}C ")
         if averages.avg_mean_humidity is not None:
             print(f"Average Mean Humidity: {round(averages.avg_mean_humidity,2)}%")
-
 
 
     def print_yearly_report(self, stats):
