@@ -1,7 +1,7 @@
 import os
 import calendar
 from datetime import datetime
-from parser.file_parser import parse_weather_file
+from parser.file_parser import WeatherFileParser
 
 def fetch_month_string(date):
     date = datetime.strptime(f'{date}', '%Y-%m-%d').date()
@@ -52,7 +52,8 @@ def load_year_data(data_dir, year):
     all_readings = []
     
     for file_path in file_list:
-        readings = parse_weather_file(file_path)
+        parser = WeatherFileParser()
+        readings = parser.parse_file(file_path)
         all_readings.extend(readings)
     
     return all_readings
@@ -63,7 +64,8 @@ def load_month_data(data_dir, year, month):
     all_readings = []
     
     for file_path in file_list:
-        readings = parse_weather_file(file_path)
+        parser = WeatherFileParser()
+        readings = parser.parse_file(file_path)
         all_readings.extend(readings)
     
     return all_readings
@@ -77,3 +79,5 @@ def parse_year_month(value):
         return (year, month)
     except (ValueError, IndexError):
         raise argparse.ArgumentTypeError(f"Invalid format: {value}")
+
+

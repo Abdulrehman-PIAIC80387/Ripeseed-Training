@@ -6,8 +6,6 @@ from utils.helpers import get_files_for_year, get_files_for_month,load_year_data
 
 
 def main():
-    reports_obj = reports_generator.Reports()
-    calculations_obj = calculator.Calculations()
     parser = argparse.ArgumentParser()
     parser.add_argument('data_dir')
     parser.add_argument('-e', type=int, dest='yearly_year')
@@ -20,6 +18,9 @@ def main():
     if not os.path.exists(args.data_dir):
         print("Error: Directory not found")
         return
+
+    reports_obj = reports_generator.Reports()
+    calculations_obj = calculator.Calculations()
     
     if args.yearly_year is not None:
         readings = load_year_data(args.data_dir, args.yearly_year)
@@ -27,8 +28,6 @@ def main():
             stats = calculations_obj.calculate_yearly_stats(readings)
             reports_obj.print_yearly_report(stats)
             
-            if args.monthly_avg or args.monthly_chart:
-                print()
 
     if args.monthly_avg is not None:
         year, month = args.monthly_avg
@@ -38,9 +37,6 @@ def main():
             averages = calculations_obj.calculate_monthly_averages(readings)
             reports_obj.print_monthly_averages_report(averages)
             
-            if args.monthly_chart:
-                print()
-
     if args.monthly_chart is not None:
         year, month = args.monthly_chart
         readings = load_month_data(args.data_dir, year, month)
