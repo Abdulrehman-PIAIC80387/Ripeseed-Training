@@ -1,4 +1,5 @@
 from utils.helpers import fetch_day_string, fetch_month_string, parse_date, sort_readings_by_date, colorize
+
 class Reports:
     def __init__(self):
         self.red = '\033[91m'
