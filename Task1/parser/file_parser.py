@@ -1,12 +1,12 @@
 import csv
-from parser.parser_validator import WeatherDataValidator
+from parser.data_extractor import DataExtractor
 from models.weather_reading import WeatherReading
 
 
 class WeatherFileParser:
     
     def __init__(self):
-        self.validator = WeatherDataValidator()
+        self.extractor = DataExtractor()
     
     def parse_file(self, file_path):
         readings = []
@@ -15,10 +15,14 @@ class WeatherFileParser:
             with open(file_path, 'r') as file:
                 reader = csv.DictReader(file)
                 for row in reader:
-                    validated = self.validator.validate(row)
-                    if validated:
-                        readings.append(WeatherReading(**validated))
+                    reading = self._create_reading(row)
+                    if reading:
+                        readings.append(reading)
         except Exception as e:
             print(f"Error reading file {file_path}: {e}")
 
         return readings
+    
+    def _create_reading(self, row):
+        data = self.extractor.extract_from_row(row)
+        return WeatherReading.from_dict(data)

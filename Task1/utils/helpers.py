@@ -2,6 +2,7 @@ import os
 import calendar
 from datetime import datetime
 from parser.file_parser import WeatherFileParser
+import argparse
 
 def fetch_month_string(date):
     date = datetime.strptime(f'{date}', '%Y-%m-%d').date()
@@ -79,5 +80,23 @@ def parse_year_month(value):
         return (year, month)
     except (ValueError, IndexError):
         raise argparse.ArgumentTypeError(f"Invalid format: {value}")
+    
+
+def fetch_day_string(date_str):
+    date = datetime.strptime(date_str, "%Y-%m-%d")
+    return date.day
+
+def fetch_month_string(date_str):
+    date = datetime.strptime(date_str, "%Y-%m-%d")
+    return date.strftime("%B")
+
+def parse_date(date_str):
+    return datetime.strptime(date_str, "%Y-%m-%d")
+
+def sort_readings_by_date(readings):
+    return sorted(readings, key=lambda r: parse_date(r.date))
+
+def colorize(text, color, reset='\033[0m'):
+    return f"{color}{text}{reset}"
 
 
