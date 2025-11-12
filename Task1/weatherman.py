@@ -9,7 +9,7 @@ from utils.helpers import get_files_for_year, get_files_for_month, load_year_dat
 def main():
     parser_arg = argparse.ArgumentParser()
     parser_arg.add_argument('data_dir')
-    parser_arg.add_argument('-e', type=int, dest='yearly_year')
+    parser_arg.add_argument('-e', type=str, dest='yearly_year')
     parser_arg.add_argument('-a', type=parse_year_month, dest='monthly_avg')
     parser_arg.add_argument('-c', type=parse_year_month, dest='monthly_chart')
     parser_arg.add_argument('-s', action='store_true', dest='bonus_mode')
@@ -35,7 +35,7 @@ def main():
     if args.monthly_avg is not None:
         year, month = args.monthly_avg
         file_list = get_files_for_month(args.data_dir, year, month)
-        readings = load_month_data(file_parser, file_list, year, month)
+        readings = load_month_data(file_parser, file_list)
         
         if len(readings) > 0:
             averages = calculations_obj.calculate_monthly_averages(readings)
@@ -44,7 +44,7 @@ def main():
     if args.monthly_chart is not None:
         year, month = args.monthly_chart
         file_list = get_files_for_month(args.data_dir, year, month)
-        readings = load_month_data(file_parser, file_list, year, month)
+        readings = load_month_data(file_parser, file_list)
         
         if len(readings) > 0:
             if args.bonus_mode:

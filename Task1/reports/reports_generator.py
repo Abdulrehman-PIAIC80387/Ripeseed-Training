@@ -25,7 +25,7 @@ class Reports:
             day = reading.date.day
             temp_max = reading.max_temp
             temp_low = reading.min_temp
-            bar = self.blue + '+' * temp_low + self.reset + self.red + '+' * (temp_max - temp_low) + self.reset
+            bar = self.blue + '+' * temp_low + self.reset + self.red + '+' * temp_max + self.reset
             print(f"{day:02d} {bar} {temp_low}C - {temp_max}C")
 
 

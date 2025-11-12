@@ -23,7 +23,7 @@ def get_files_for_year(data_dir, year):
     
     for root, dirs, files in os.walk(data_dir):
         for file in files:
-            if str(year) in file and file.endswith('.txt'):
+            if year in file and file.endswith('.txt'):
                 full_path = os.path.join(root, file)
                 file_list.append(full_path)
     
@@ -57,7 +57,7 @@ def load_year_data(parser, file_list):
     return sorted(all_readings, key=lambda r: r.date)
 
 
-def load_month_data(parser, file_list, year, month):
+def load_month_data(parser, file_list):
     all_readings = []
     
     for file_path in file_list:
