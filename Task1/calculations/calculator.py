@@ -7,9 +7,9 @@ class Calculations:
     def calculate_monthly_averages(self, readings):
         averages = MonthlyAverages()
         
-        max_temps = [r.max_temp for r in readings if r.max_temp is not None]
-        min_temps = [r.min_temp for r in readings if r.min_temp is not None]
-        mean_humidities = [r.mean_humidity for r in readings if r.mean_humidity is not None]
+        max_temps = [r.max_temp for r in readings ]
+        min_temps = [r.min_temp for r in readings ]
+        mean_humidities = [r.mean_humidity for r in readings]
         
         averages.avg_highest_temp = self._calculate_average(max_temps)
         averages.avg_lowest_temp = self._calculate_average(min_temps)
@@ -18,9 +18,7 @@ class Calculations:
         return averages
     
     def _calculate_average(self, values):
-        if len(values) > 0:
-            return sum(values) / len(values)
-        return None
+        return round(sum(values) / len(values), 2)
 
 
     def calculate_yearly_stats(self, readings):

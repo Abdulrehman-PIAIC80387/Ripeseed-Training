@@ -1,7 +1,6 @@
 import os
 import calendar
 from datetime import datetime
-from parser.file_parser import WeatherFileParser
 import argparse
 
 def fetch_month_string(date):
@@ -48,28 +47,24 @@ def get_files_for_month(data_dir, year, month):
     return file_list
 
 
-def load_year_data(data_dir, year):
-    file_list = get_files_for_year(data_dir, year)
+def load_year_data(parser, file_list):
     all_readings = []
     
     for file_path in file_list:
-        parser = WeatherFileParser()
         readings = parser.parse_file(file_path)
         all_readings.extend(readings)
     
-    return all_readings
+    return sorted(all_readings, key=lambda r: r.date)
 
 
-def load_month_data(data_dir, year, month):
-    file_list = get_files_for_month(data_dir, year, month)
+def load_month_data(parser, file_list, year, month):
     all_readings = []
     
     for file_path in file_list:
-        parser = WeatherFileParser()
         readings = parser.parse_file(file_path)
         all_readings.extend(readings)
     
-    return all_readings
+    return sorted(all_readings, key=lambda r: r.date)
 
 
 def parse_year_month(value):
@@ -90,13 +85,9 @@ def fetch_month_string(date_str):
     date = datetime.strptime(date_str, "%Y-%m-%d")
     return date.strftime("%B")
 
-def parse_date(date_str):
-    return datetime.strptime(date_str, "%Y-%m-%d")
 
-def sort_readings_by_date(readings):
-    return sorted(readings, key=lambda r: parse_date(r.date))
 
-def colorize(text, color, reset='\033[0m'):
-    return f"{color}{text}{reset}"
+
+
 
 
