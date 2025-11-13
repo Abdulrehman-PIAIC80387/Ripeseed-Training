@@ -35,6 +35,11 @@ INSTALLED_APPS = [
     'src.licensing',
 ]
 
+# Third party applications
+INSTALLED_APPS += [
+    "phonenumber_field",
+]
+
 MIDDLEWARE = [
     'django.middleware.security.SecurityMiddleware',
     'django.contrib.sessions.middleware.SessionMiddleware',
@@ -132,7 +137,3 @@ MEDIA_ROOT = BASE_DIR / 'media'
 DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
 
 
-# Admin site configuration
-ADMIN_SITE_HEADER = "License Management System"
-ADMIN_SITE_TITLE = "LMS Admin"
-ADMIN_INDEX_TITLE = "Welcome to License Management System"
