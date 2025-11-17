@@ -1,15 +1,12 @@
 from django.db import models
+from django.utils.translation import gettext_lazy as _
 
-class LicenseStatus(models.TextChoices):
-    ACTIVATE = "A", "Activate"
-    DEACTIVATE = "D", "Deactivate"
 
 class ActionType(models.TextChoices):
-        CREATED = 'CR', 'Created'
-        RENEWED = 'RN', 'Renewed'
-        SEAT_INCREASED = 'SI', 'Seat Increased'
-        SEAT_DECREASED = 'SD', 'Seat Decreased'
-        PRICE_UPDATED = 'PU', 'Price Updated'
-        DEACTIVATED = 'DA', 'Deactivated'
-        SUSPENDED = 'SP', 'Suspended'
-        REACTIVATED = 'RA', 'Reactivated'
+    CREATED = 'CREATED', _('License Created')
+    RENEWED = 'RENEWED', _('License Renewed')
+    SEAT_INCREASED = 'SEAT_INCREASED', _('Seats Increased')
+    SEAT_DECREASED = 'SEAT_DECREASED', _('Seats Decreased')
+    PRICE_UPDATED = 'PRICE_UPDATED', _('Price Updated')
+    ACTIVATED = 'ACTIVATED', _('License Activated')
+    DEACTIVATED = 'DEACTIVATED', _('License Deactivated')

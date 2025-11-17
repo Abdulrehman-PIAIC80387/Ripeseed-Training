@@ -2,3 +2,6 @@ venv
 .DS_STORE
 ./.DS_STORE
 *.pyc
+db.sqlite3
+licensing/migrations/*
+
