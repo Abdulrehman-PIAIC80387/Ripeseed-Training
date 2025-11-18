@@ -6,6 +6,7 @@ from django.core.exceptions import ValidationError
 from django.utils.translation import gettext_lazy as _
 from phonenumber_field.modelfields import PhoneNumberField
 from common.constants import ActionType
+from licensing.validators import validate_date_range
 
 
 class BaseModel(models.Model):
@@ -72,7 +73,7 @@ class License(BaseModel):
     )
     end_date = models.DateField(
         _("End Date"),
-        help_text=_("License expiration date") # validator here
+        help_text=_("License expiration date")
     )
     seat_cap = models.PositiveIntegerField(
         _("Seat Capacity"),
@@ -97,23 +98,15 @@ class License(BaseModel):
         ordering = ['-created_at']
         verbose_name = _('License')
         verbose_name_plural = _('Licenses')
-        constraints = [
-            models.CheckConstraint(
-                check=models.Q(end_date__gt=models.F('start_date')),
-                name='valid_date_range'
-            ),
-        ]
         indexes = [
             models.Index(fields=['is_active']),
             models.Index(fields=['end_date']),
         ]
 
     def __str__(self):
-        status = "Active" if self.is_active else "Inactive"
-        return f"{self.organization.name} - License ({status})"
+        return f"{self.organization.name}"
 
     def clean(self):
-        from licensing.validators import validate_date_range
         super().clean()
         validate_date_range(self.start_date, self.end_date)
 

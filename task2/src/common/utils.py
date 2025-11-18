@@ -2,6 +2,8 @@ from decimal import Decimal, ROUND_HALF_UP
 from dateutil.relativedelta import relativedelta
 from django.utils import timezone
 from licensing.models import LicenseHistory
+from licensing.models import LicenseHistory
+from common.constants import ActionType
 
 
 def calculate_prorated_refund(total_cost, days_remaining, total_days):
@@ -32,8 +34,14 @@ def get_license_duration_days(license_instance):
     return 0
 
 
-def get_license_monthly_cost(license_instance):
-    return license_instance.seat_cap * license_instance.seat_price
+def get_license_monthly_cost(license_instance): 
+    price_change = LicenseHistory.objects.filter(license=license_instance, action__in=[ActionType.PRICE_INCREASED,ActionType.PRICE_DECREASED]).order_by('created_at').first()
+    seat_change = LicenseHistory.objects.filter(license=license_instance, action__in=[ActionType.SEAT_INCREASED, ActionType.SEAT_DECREASED]).order_by('created_at').first()
+    
+    seat_cap = seat_change.old_values.get('seat_cap') if seat_change else license_instance.seat_cap
+    seat_price = Decimal(str(price_change.old_values.get('seat_price'))) if price_change else license_instance.seat_price
+    
+    return seat_cap * seat_price
 
 
 def get_license_total_cost(license_instance):

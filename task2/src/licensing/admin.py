@@ -50,13 +50,11 @@ class LicenseAdmin(admin.ModelAdmin):
         if not obj.pk:
             return "Save the license first to see refund calculation"
         
-        if not obj.is_active:
-            return "License is inactive - no refund applicable"
-        
         refund_amount = RefundService.calculate_refund(obj)
         days_remaining = get_license_days_remaining(obj)
         total_days = get_license_duration_days(obj)
         days_used = total_days - days_remaining
+       
         
         if refund_amount == 0:
             return "No refund applicable (license expired)"
@@ -64,12 +62,12 @@ class LicenseAdmin(admin.ModelAdmin):
         usage_percent = (days_used / total_days * 100) if total_days > 0 else 0
         
         return format_html(
-            '<strong>Days Used:</strong> {} of {} days ({:.1f}%)<br>'
+            '<strong>Days Used:</strong> {} of {} days {}<br>'
             '<strong>Days Remaining:</strong> {} days<br>'
             '<strong>Refund Amount:</strong> <span style="color: green; font-size: 14px;">{}</span>',
             days_used, total_days, usage_percent,
             days_remaining,
-            format_currency(refund_amount)
+            refund_amount
         )
     refund_info_display.short_description = _('Refund Calculation')
 
