@@ -52,10 +52,9 @@ def track_license_changes(sender, instance, created, **kwargs):
         )
     
     if old_seat_price != instance.seat_price:
-        action = ActionType.PRICE_INCREASED if instance.seat_price > old_seat_price else ActionType.PRICE_DECREASED
         create_license_history(
             license=instance,
-            action=action,
+            action=ActionType.PRICE_UPDATED,
             performed_by=performed_by,
             old_values={'seat_price': float(old_seat_price)},
             new_values={'seat_price': float(instance.seat_price)},

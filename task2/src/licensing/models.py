@@ -170,3 +170,7 @@ class LicenseHistory(BaseModel):
 
     def __str__(self):
         return (f"{self.license.organization.name} - created at {self.created_at}")
+    
+    
+    
+    
