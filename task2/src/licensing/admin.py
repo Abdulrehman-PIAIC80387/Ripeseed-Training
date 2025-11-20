@@ -63,17 +63,18 @@ class LicenseAdmin(admin.ModelAdmin):
             except Exception as e:
                 messages.error(request, f"Error: {str(e)}")
         
-            messages.success(request, f"Renewed {len(queryset)} license(s)")
+            messages.success(request, f"Renewed {queryset.count()} license(s)")
 
 
     @admin.action(description=_('Deactivate selected licenses'))
     def deactivate_licenses(self, request, queryset):
         for license_obj in queryset:
             try:
-                refund = LicenseService.deactivate_license(license_obj,performed_by=parse_admin_user(request))
+                LicenseService.deactivate_license(license_obj,performed_by=parse_admin_user(request))
+                
             except Exception as e:
                 messages.error(request, f"Error: {str(e)}")
-        messages.success(request, f"Deactivated {len(queryset)} license(s)")
+        messages.success(request, f"Deactivated {queryset.count()} license(s)")
         
         
     @admin.action(description=_('Increase seats by 10'))
@@ -86,7 +87,7 @@ class LicenseAdmin(admin.ModelAdmin):
             except Exception as e:
                 messages.error(request, f"Error: {str(e)}")
                 
-        messages.success(request, f"Increased seats for {len(license_obj)} license(s)")
+        messages.success(request, f"Increased seats for {queryset.count()} license(s)")
 
 
     @admin.action(description=_('Decrease seats by 10'))
@@ -98,7 +99,7 @@ class LicenseAdmin(admin.ModelAdmin):
             except Exception as e:
                 messages.error(request, f"Error: {str(e)}")
         
-        messages.success(request, f"Decreased seats for {len(queryset)} license(s)")
+        messages.success(request, f"Decreased seats for {queryset.count()} license(s)")
 
 
     @admin.action(description=_('Update seat price to $20'))
@@ -110,7 +111,7 @@ class LicenseAdmin(admin.ModelAdmin):
             except Exception as e:
                 messages.error(request, f"Error: {str(e)}")
         
-        messages.success(request, f"Updated price to ${new_price} for {len(queryset)} license(s)")
+        messages.success(request, f"Updated price to ${new_price} for {queryset.count()} license(s)")
 
 
 @admin.register(LicenseHistory)

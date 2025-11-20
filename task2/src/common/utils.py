@@ -27,13 +27,18 @@ def create_license_history(license, action, performed_by, old_values, new_values
         notes=notes
     )
     
+    
 def calculate_period(period_start, period_end, seat_cap, seat_price, today, action_label):
-        days_total = (period_end - period_start).days    
+        days_total = (period_end - period_start).days
         monthly_cost = seat_cap * seat_price
         period_cost = (monthly_cost * days_total) / 30
         days_used = (today - period_start).days
         days_remaining = (period_end - today).days
-        refund = (period_cost * days_remaining) / days_total
+    
+        if days_total == 0:
+            refund = 0
+        else:
+            refund = (period_cost * days_remaining) / days_total
         
         return {
             'action': action_label,

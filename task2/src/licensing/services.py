@@ -20,6 +20,7 @@ class LicenseService:
         new_end_date = add_months_to_date(new_start_date, reniew_months)
         license_instance.start_date = new_start_date
         license_instance.end_date = new_end_date
+        license_instance.is_active = True
         license_instance.save()
         
         create_license_history(
@@ -41,7 +42,7 @@ class LicenseService:
 
     @staticmethod
     @transaction.atomic
-    def deactivate_license(license_instance, performed_by):    
+    def deactivate_license(license_instance, performed_by):  
         refund_amount = RefundService.calculate_refund(license_instance)
         license_instance.is_active = False
         license_instance.save()
@@ -52,35 +53,69 @@ class LicenseService:
             performed_by=performed_by,
             old_values={'is_active': True},
             new_values={'is_active': False},
-            refund_amount=refund_amount,
+            refund_amount=refund_amount['total_refund'],
             notes=f"License deactivated. Refund: ${refund_amount}"
         )
         
-        return license_instance, refund_amount
+        return license_instance, refund_amount['total_refund']
     
     @staticmethod
     @transaction.atomic
-    def increase_seat_capacity(license_instance, seats_to_add=10, performed_by='Admin'):
+    def increase_seat_capacity(license_instance, seats_to_add, performed_by):
+        old_seat_cap = license_instance.seat_cap
         new_seat_cap = license_instance.seat_cap + seats_to_add
+        
         license_instance.seat_cap = new_seat_cap
         license_instance.save()
+        
+        create_license_history(
+            license=license_instance,
+            action=ActionType.SEAT_INCREASED,
+            performed_by=performed_by,
+            old_values={'seat_cap': old_seat_cap},
+            new_values={'seat_cap': new_seat_cap},
+            notes=f"Seat capacity increased from {old_seat_cap} to {new_seat_cap}"
+        )
+        
         return license_instance
-
 
     @staticmethod
     @transaction.atomic
-    def decrease_seat_capacity(license_instance, seats_to_remove=10, performed_by='Admin'):
+    def decrease_seat_capacity(license_instance, seats_to_remove, performed_by):
+        old_seat_cap = license_instance.seat_cap
         new_seat_cap = max(1, license_instance.seat_cap - seats_to_remove)
+        
         license_instance.seat_cap = new_seat_cap
         license_instance.save()
+        
+        create_license_history(
+            license=license_instance,
+            action=ActionType.SEAT_DECREASED,
+            performed_by=performed_by,
+            old_values={'seat_cap': old_seat_cap},
+            new_values={'seat_cap': new_seat_cap},
+            notes=f"Seat capacity decreased from {old_seat_cap} to {new_seat_cap}"
+        )
+        
         return license_instance
-
 
     @staticmethod
     @transaction.atomic
-    def update_seat_price(license_instance, new_price, performed_by='Admin'):
+    def update_seat_price(license_instance, new_price, performed_by):
+        old_price = license_instance.seat_price
+        
         license_instance.seat_price = new_price
         license_instance.save()
+        
+        create_license_history(
+            license=license_instance,
+            action=ActionType.PRICE_UPDATED,
+            performed_by=performed_by,
+            old_values={'seat_price': float(old_price)},
+            new_values={'seat_price': float(new_price)},
+            notes=f"Seat price updated from ${old_price} to ${new_price}"
+        )
+        
         return license_instance
 
 
@@ -129,7 +164,7 @@ class RefundService:
         }
     
     @staticmethod
-    def _calculate_refund_with_changes(license_instance, history, today):
+    def _calculate_refund_with_changes(license_instance, history):
         periods = []
         total_refund = 0
         period_start = license_instance.start_date
