@@ -26,9 +26,16 @@ def create_license_history(license, action, performed_by, old_values, new_values
         refund_amount=refund_amount,
         notes=notes
     )
-    
+
+
+def get_total_cost(license_instance):
+    total_days = (license_instance.end_date - license_instance.start_date).days
+    monthly_cost = license_instance.seat_cap * license_instance.seat_price
+    total_cost = (monthly_cost * total_days) / 30  
+    return round(total_cost,2)
     
 def calculate_period(period_start, period_end, seat_cap, seat_price, today, action_label):
+        print(period_start)
         days_total = (period_end - period_start).days
         monthly_cost = seat_cap * seat_price
         period_cost = (monthly_cost * days_total) / 30
@@ -39,6 +46,8 @@ def calculate_period(period_start, period_end, seat_cap, seat_price, today, acti
             refund = 0
         else:
             refund = (period_cost * days_remaining) / days_total
+            refund = float(round(refund,2))
+            period_cost = float(round(period_cost,2))
         
         return {
             'action': action_label,
@@ -51,5 +60,5 @@ def calculate_period(period_start, period_end, seat_cap, seat_price, today, acti
             'days_remaining': days_remaining,
             'monthly_cost': monthly_cost,
             'period_cost': period_cost,
-            'refund': float(refund)
+            'refund': refund
         }

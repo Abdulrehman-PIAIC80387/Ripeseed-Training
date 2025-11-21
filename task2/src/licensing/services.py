@@ -145,8 +145,10 @@ class RefundService:
         monthly_cost = license_instance.seat_cap * license_instance.seat_price
         total_cost = (monthly_cost * total_days) / 30
         refund = (total_cost * days_remaining) / total_days
+        total_cost = (monthly_cost * total_days) / 30
         
         return {
+            'total_cost': round(total_cost,2),
             'total_refund': round(refund,2),
             'scenario': 'Simple Refund No Changes',
             'periods': [{
@@ -171,6 +173,7 @@ class RefundService:
         current_seat_cap = None
         current_seat_price = None
         today = timezone.now().date()
+        total_cost = get_total_cost(license_instance)
         
         for record in history:
             if record.action == ActionType.CREATED:
@@ -201,8 +204,10 @@ class RefundService:
             )
             periods.append(period_data)
             total_refund += period_data['refund']
+            
         
-        return {
+        return {   
+            'total_cost': total_cost,      
             'total_refund': total_refund,
             'scenario': 'Seat Price or Capacity Changed',
             'periods': periods
