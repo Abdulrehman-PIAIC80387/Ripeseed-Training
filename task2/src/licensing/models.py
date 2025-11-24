@@ -7,6 +7,7 @@ from django.utils.translation import gettext_lazy as _
 from phonenumber_field.modelfields import PhoneNumberField
 from common.constants import ActionType
 from licensing.validators import validate_date_range
+from django.utils import timezone
 
 
 class BaseModel(models.Model):
@@ -127,6 +128,11 @@ class LicenseHistory(BaseModel):
         db_index=True,
         help_text=_("Type of action performed")
     )
+    action_date = models.DateField(  # ← NEW FIELD
+        _("Action Date"),
+        default=timezone.now,
+        help_text=_("Date when action was performed (for testing purposes)")
+    )
     performed_by = models.CharField(
         _("Performed By"),
         max_length=255,
@@ -160,16 +166,16 @@ class LicenseHistory(BaseModel):
 
     class Meta:
         db_table = 'license_history'
-        ordering = ['-created_at']
+        ordering = ['action_date', 'created_at']  
         verbose_name = _('License History')
         verbose_name_plural = _('License Histories')
         indexes = [
-            models.Index(fields=['license', '-created_at']),
+            models.Index(fields=['license', 'action_date']), 
             models.Index(fields=['action']),
         ]
 
     def __str__(self):
-        return (f"{self.license.organization.name} - created at {self.created_at}")
+        return f"{self.license.organization.name} - {self.get_action_display()} on {self.action_date}"
     
     
     

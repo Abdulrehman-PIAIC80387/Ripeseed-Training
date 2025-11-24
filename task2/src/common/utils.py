@@ -4,6 +4,9 @@ from django.utils import timezone
 from licensing.models import LicenseHistory
 from licensing.models import LicenseHistory
 from common.constants import ActionType
+from licensing.models import LicenseHistory
+from decimal import Decimal
+from common.constants import ActionType
 
 
 def add_months_to_date(base_date, months):
@@ -16,10 +19,14 @@ def parse_admin_user(request):
     return 'System'
 
 
-def create_license_history(license, action, performed_by, old_values, new_values, notes='', refund_amount=None):
+def create_license_history(license, action, performed_by, old_values, new_values, notes='', refund_amount=None, action_date=None):
+    if action_date is None:
+        action_date = timezone.now().date()
+    
     return LicenseHistory.objects.create(
         license=license,
         action=action,
+        action_date=action_date,  
         performed_by=performed_by,
         old_values=old_values,
         new_values=new_values,
@@ -35,7 +42,6 @@ def get_total_cost(license_instance):
     return round(total_cost,2)
     
 def calculate_period(period_start, period_end, seat_cap, seat_price, today, action_label):
-        print(period_start)
         days_total = (period_end - period_start).days
         monthly_cost = seat_cap * seat_price
         period_cost = (monthly_cost * days_total) / 30
@@ -62,3 +68,76 @@ def calculate_period(period_start, period_end, seat_cap, seat_price, today, acti
             'period_cost': period_cost,
             'refund': refund
         }
+        
+def calculate_days(start_date, end_date, action_date):
+    total_days = (end_date - start_date).days
+    days_used = (action_date - start_date).days if action_date > start_date else 0
+    days_remaining = (end_date - action_date).days if action_date < end_date else 0
+    return total_days, days_used, days_remaining
+
+
+def calculate_cost(seat_cap, seat_price, days):
+    monthly_cost = Decimal(str(seat_cap)) * Decimal(str(seat_price))
+    return (monthly_cost * days) / 30
+
+
+def get_total_cost(license_instance):
+    total_days = (license_instance.end_date - license_instance.start_date).days
+    return calculate_cost(license_instance.seat_cap, license_instance.seat_price, total_days)
+
+
+def create_period(action, period_start, period_end, seat_cap, seat_price,days_total, days_used, days_remaining, period_cost, refund=0, owed=0):
+    return {
+        'action': action,
+        'period_start': period_start,
+        'period_end': period_end,
+        'seat_cap': seat_cap,
+        'seat_price': float(seat_price),
+        'days_total': days_total,
+        'days_used': days_used,
+        'days_remaining': days_remaining,
+        'period_cost': round(float(period_cost), 2),
+        'refund': round(float(refund), 2),
+        'owed': round(float(owed), 2)
+    }
+
+
+def group_actions_by_date(history):
+    actions_by_date = {}
+    for record in history:
+        if record.action in [ActionType.CREATED, ActionType.PRICE_UPDATED, 
+                           ActionType.SEAT_INCREASED, ActionType.SEAT_DECREASED]:
+            date_key = record.action_date
+            if date_key not in actions_by_date:
+                actions_by_date[date_key] = []
+            actions_by_date[date_key].append(record)
+    return actions_by_date
+
+
+def get_net_price_change(price_records):
+    if not price_records:
+        return None, None
+    original_price = Decimal(str(price_records[0].old_values.get('seat_price')))
+    final_price = Decimal(str(price_records[-1].new_values.get('seat_price')))
+    return original_price, final_price
+
+
+def calculate_price_change_impact(seat_cap, old_price, new_price, days_used):
+    if new_price > old_price:
+        price_diff = new_price - old_price
+        owed = calculate_cost(seat_cap, price_diff, days_used)
+        return 0, owed, f"Price Increased (${old_price} → ${new_price}) - Client Owes"
+    else:
+        return 0, 0, f"Price Decreased (${old_price} → ${new_price}) - Refund"
+
+
+def get_action_label(record):
+    if record.action == ActionType.SEAT_INCREASED:
+        old_seats = record.old_values.get('seat_cap')
+        new_seats = record.new_values.get('seat_cap')
+        return f"Seats Increased ({old_seats} -> {new_seats})"
+    elif record.action == ActionType.SEAT_DECREASED:
+        old_seats = record.old_values.get('seat_cap')
+        new_seats = record.new_values.get('seat_cap')
+        return f"Seats Decreased ({old_seats} -> {new_seats})"
+    return record.get_action_display()

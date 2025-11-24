@@ -30,7 +30,7 @@ class LicenseAdmin(admin.ModelAdmin):
     list_filter = ('is_active', 'start_date', 'end_date')
     search_fields = ('organization__name',)
     readonly_fields = ('refund_breakdown_display',)
-    actions = ['renew_licenses', 'deactivate_licenses','increase_seats','decrease_seats','update_price']
+    actions = ['renew_licenses', 'deactivate_licenses']
     
     fieldsets = (
         ('License Details', {
@@ -48,11 +48,12 @@ class LicenseAdmin(admin.ModelAdmin):
         if not obj.is_active:
             return "License is inactive - no refund applicable"
         
-        refund_data = RefundService.calculate_refund(obj)
+        import datetime
+        action_date = datetime.date.today()  # Simple
+        
+        refund_data = RefundService.calculate_refund(obj, action_date)
         
         return format_html('<pre>{}</pre>', json.dumps(refund_data, indent=2, default=str))
-    
-    refund_breakdown_display.short_description = _('Refund Breakdown by Actions')
     
 
     @admin.action(description=_('Renew selected licenses (12 months)'))
@@ -76,43 +77,6 @@ class LicenseAdmin(admin.ModelAdmin):
                 messages.error(request, f"Error: {str(e)}")
         messages.success(request, f"Deactivated {queryset.count()} license(s)")
         
-        
-    @admin.action(description=_('Increase seats by 10'))
-    def increase_seats(self, request, queryset):
-        for license_obj in queryset:
-            try:
-                LicenseService.increase_seat_capacity(license_obj,seats_to_add=10,
-                performed_by=parse_admin_user(request))
-            
-            except Exception as e:
-                messages.error(request, f"Error: {str(e)}")
-                
-        messages.success(request, f"Increased seats for {queryset.count()} license(s)")
-
-
-    @admin.action(description=_('Decrease seats by 10'))
-    def decrease_seats(self, request, queryset):
-        for license_obj in queryset:
-            try:
-                LicenseService.decrease_seat_capacity(license_obj,seats_to_remove=10,performed_by=parse_admin_user(request))
-
-            except Exception as e:
-                messages.error(request, f"Error: {str(e)}")
-        
-        messages.success(request, f"Decreased seats for {queryset.count()} license(s)")
-
-
-    @admin.action(description=_('Update seat price to $20'))
-    def update_price(self, request, queryset):
-        new_price = 20  
-        for license_obj in queryset:
-            try:
-                LicenseService.update_seat_price(license_obj,new_price=new_price,performed_by=parse_admin_user(request))
-            except Exception as e:
-                messages.error(request, f"Error: {str(e)}")
-        
-        messages.success(request, f"Updated price to ${new_price} for {queryset.count()} license(s)")
-
 
 @admin.register(LicenseHistory)
 class LicenseHistoryAdmin(admin.ModelAdmin):
