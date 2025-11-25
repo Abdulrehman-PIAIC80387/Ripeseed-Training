@@ -148,9 +148,12 @@ class RefundService:
                 current_seat_price = Decimal(str(record.new_values.get('seat_price')))
                 current_seat_cap = record.new_values.get('seat_cap')
         
+        net_amount= (round(total_refund - total_owed, 2))
+        if net_amount < 0:
+            net_amount = 0
         return {
             'total_cost': round(get_total_cost(license_instance), 2), 'total_refund': round(total_refund, 2),
-            'total_owed': round(total_owed, 2), 'net_amount': round(total_refund - total_owed, 2),
+            'total_owed': round(total_owed, 2), 'net_amount': net_amount,
             'scenario': 'With Price/Capacity Changes', 'action_date': action_date, 'periods': periods
         }
     
@@ -181,19 +184,24 @@ class RefundService:
             
             if new_price > old_price:
                 price_diff = new_price - old_price
-                price_owed = calculate_cost(new_seats, price_diff, days_remaining) if days_remaining > 0 else 0
+                print(price_diff)
+                price_owed = calculate_cost(old_seats, price_diff, days_remaining) if days_remaining > 0 else 0
+                print(price_owed)
             else:
                 price_diff = old_price - new_price
-                price_refund = calculate_cost(new_seats, price_diff, days_remaining) if days_remaining > 0 else 0
+                price_refund = calculate_cost(old_seats, price_diff, days_remaining) if days_remaining > 0 else 0
             
             if new_seats > old_seats:
                 seat_diff = new_seats - old_seats
+                print(seat_diff)
                 seat_owed = calculate_cost(seat_diff, new_price, days_remaining) if days_remaining > 0 else 0
+                print(seat_owed)
             else:
                 seat_diff = old_seats - new_seats
                 seat_refund = calculate_cost(seat_diff, new_price, days_remaining) if days_remaining > 0 else 0
             
             owed = (price_owed if 'price_owed' in locals() else 0) + (seat_owed if 'seat_owed' in locals() else 0)
+            print("owend:",owed)
             refund = (price_refund if 'price_refund' in locals() else 0) + (seat_refund if 'seat_refund' in locals() else 0)
             action_label = f"Price (${old_price} -> ${new_price}) and Seats ({old_seats} -> {new_seats}) Updated"
         elif record and record.action in [ActionType.SEAT_INCREASED, ActionType.SEAT_DECREASED]:

@@ -77,6 +77,7 @@ def calculate_days(start_date, end_date, action_date):
 
 
 def calculate_cost(seat_cap, seat_price, days):
+    print("seat_cap:",seat_cap, "seat_price:",seat_price, "days:", days)
     monthly_cost = Decimal(str(seat_cap)) * Decimal(str(seat_price))
     return (monthly_cost * days) / 30
 
