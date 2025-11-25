@@ -106,7 +106,7 @@ def group_actions_by_date(history):
     actions_by_date = {}
     for record in history:
         if record.action in [ActionType.CREATED, ActionType.PRICE_UPDATED, 
-                           ActionType.SEAT_INCREASED, ActionType.SEAT_DECREASED]:
+                           ActionType.SEAT_INCREASED, ActionType.SEAT_DECREASED, ActionType.PRICE_AND_SEAT_UPDATED]:
             date_key = record.action_date
             if date_key not in actions_by_date:
                 actions_by_date[date_key] = []

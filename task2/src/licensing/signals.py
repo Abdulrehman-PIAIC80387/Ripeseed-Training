@@ -21,6 +21,8 @@ def store_old_values(sender, instance, **kwargs):
 def track_license_changes(sender, instance, created, **kwargs):
     old_seat_cap = getattr(instance, 'old_seat_cap', None)
     old_seat_price = getattr(instance, 'old_seat_price', None)
+    seat_changed = old_seat_cap and old_seat_cap != instance.seat_cap
+    price_changed = old_seat_price and old_seat_price != instance.seat_price
     
     if created:
         create_license_history(
@@ -37,9 +39,17 @@ def track_license_changes(sender, instance, created, **kwargs):
             },
             notes=f"New license created for {instance.organization.name}"
         )
-        
     
-    if old_seat_cap and old_seat_cap != instance.seat_cap:
+    if seat_changed and price_changed:
+        create_license_history(
+            license=instance,
+            action=ActionType.PRICE_AND_SEAT_UPDATED,
+            performed_by='Admin',
+            old_values={'seat_cap': old_seat_cap, 'seat_price': float(old_seat_price)},
+            new_values={'seat_cap': instance.seat_cap, 'seat_price': float(instance.seat_price)},
+            notes=f"Price changed from ${old_seat_price} to ${instance.seat_price} and seats from {old_seat_cap} to {instance.seat_cap}"
+        )
+    elif seat_changed:
         action = ActionType.SEAT_INCREASED if instance.seat_cap > old_seat_cap else ActionType.SEAT_DECREASED
         create_license_history(
             license=instance,
@@ -49,8 +59,7 @@ def track_license_changes(sender, instance, created, **kwargs):
             new_values={'seat_cap': instance.seat_cap},
             notes=f"Seat capacity changed from {old_seat_cap} to {instance.seat_cap}"
         )
-    
-    if old_seat_price and old_seat_price != instance.seat_price:
+    elif price_changed:
         create_license_history(
             license=instance,
             action=ActionType.PRICE_UPDATED,

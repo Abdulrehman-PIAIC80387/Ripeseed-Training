@@ -123,12 +123,12 @@ class LicenseHistory(BaseModel):
     )
     action = models.CharField(
         _("Action Type"),
-        max_length=20,
+        max_length=50,
         choices=ActionType.choices,
         db_index=True,
         help_text=_("Type of action performed")
     )
-    action_date = models.DateField(  # ← NEW FIELD
+    action_date = models.DateField(  
         _("Action Date"),
         default=timezone.now,
         help_text=_("Date when action was performed (for testing purposes)")

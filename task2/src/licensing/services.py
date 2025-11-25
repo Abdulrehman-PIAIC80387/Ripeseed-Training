@@ -6,6 +6,7 @@ from django.utils.translation import gettext_lazy as _
 from licensing.models import License, LicenseHistory
 from common.constants import *
 from common.utils import *
+from copy import copy
  
 class LicenseService:
 
@@ -72,9 +73,9 @@ class RefundService:
     def calculate_refund(license_instance, action_date):
         history = LicenseHistory.objects.filter(license=license_instance).order_by('action_date')
         renewal = history.filter(action=ActionType.RENEWED).order_by('-action_date').first()
-        changes = history.filter(action__in=[ActionType.PRICE_UPDATED, ActionType.SEAT_INCREASED, ActionType.SEAT_DECREASED])
+        changes = history.filter(action__in=[ActionType.PRICE_UPDATED, ActionType.SEAT_INCREASED, ActionType.SEAT_DECREASED, ActionType.PRICE_AND_SEAT_UPDATED])
         
-        if renewal:
+        if renewal and renewal.action_date >= license_instance.start_date:
             return RefundService._calculate_after_renewal(license_instance, history, renewal, action_date)
         if changes.exists():
             return RefundService._calculate_with_changes(license_instance, history, action_date)
@@ -101,7 +102,7 @@ class RefundService:
         for next_index in range(current_index + 1, len(sorted_dates)):
             next_date = sorted_dates[next_index]
             next_records = actions_by_date[next_date]
-            if any(r.action in [ActionType.PRICE_UPDATED, ActionType.SEAT_INCREASED, ActionType.SEAT_DECREASED] for r in next_records):
+            if any(r.action in [ActionType.PRICE_UPDATED, ActionType.SEAT_INCREASED, ActionType.SEAT_DECREASED, ActionType.PRICE_AND_SEAT_UPDATED] for r in next_records):
                 return next_date
         return license_instance.end_date
     
@@ -165,6 +166,9 @@ class RefundService:
                     current_seat_price = Decimal(str(record.new_values.get('seat_price')))
                 elif record.action in [ActionType.SEAT_INCREASED, ActionType.SEAT_DECREASED]:
                     current_seat_cap = record.new_values.get('seat_cap')
+                elif record.action == ActionType.PRICE_AND_SEAT_UPDATED:
+                    current_seat_price = Decimal(str(record.new_values.get('seat_price')))
+                    current_seat_cap = record.new_values.get('seat_cap')
         
         return {
             'total_cost': round(get_total_cost(license_instance), 2), 'total_refund': round(total_refund, 2),
@@ -179,21 +183,48 @@ class RefundService:
             return create_period('Invalid Period - Missing Data', period_start, period_end, seat_cap, 0.0, total_days, days_used, days_remaining, 0.0)
         
         total_days, days_used, days_remaining = calculate_days(period_start, period_end, action_date)
-        period_cost = calculate_cost(seat_cap, seat_price, total_days)
         refund = owed = 0
+        display_seat_cap = seat_cap
+        display_seat_price = seat_price
         
         if record and record.action == ActionType.PRICE_UPDATED:
             old_price, new_price = Decimal(str(record.old_values.get('seat_price'))), Decimal(str(record.new_values.get('seat_price')))
+            display_seat_price = new_price
             if new_price > old_price:
-                owed = calculate_cost(seat_cap, new_price - old_price, days_used) if days_used > 0 else 0
-                refund = calculate_cost(seat_cap, new_price, days_remaining) if days_remaining > 0 else 0
+                price_diff = new_price - old_price
+                owed = calculate_cost(seat_cap, price_diff, days_remaining) if days_remaining > 0 else 0
                 action_label = f"Price Increased (${old_price} -> ${new_price}) - Client Owes"
             else:
                 price_diff = old_price - new_price
                 refund = calculate_cost(seat_cap, price_diff, days_remaining) if days_remaining > 0 else 0
                 action_label = f"Price Decreased (${old_price} -> ${new_price}) - Refund"
+        elif record and record.action == ActionType.PRICE_AND_SEAT_UPDATED:
+            old_price, new_price = Decimal(str(record.old_values.get('seat_price'))), Decimal(str(record.new_values.get('seat_price')))
+            old_seats, new_seats = record.old_values.get('seat_cap'), record.new_values.get('seat_cap')
+            display_seat_cap = new_seats
+            display_seat_price = new_price
+            
+            # Calculate price difference impact using new seat capacity
+            if new_price > old_price:
+                price_diff = new_price - old_price
+                price_owed = calculate_cost(new_seats, price_diff, days_remaining) if days_remaining > 0 else 0
+            else:
+                price_diff = old_price - new_price
+                price_refund = calculate_cost(new_seats, price_diff, days_remaining) if days_remaining > 0 else 0
+            
+            if new_seats > old_seats:
+                seat_diff = new_seats - old_seats
+                seat_owed = calculate_cost(seat_diff, new_price, days_remaining) if days_remaining > 0 else 0
+            else:
+                seat_diff = old_seats - new_seats
+                seat_refund = calculate_cost(seat_diff, new_price, days_remaining) if days_remaining > 0 else 0
+            
+            owed = (price_owed if 'price_owed' in locals() else 0) + (seat_owed if 'seat_owed' in locals() else 0)
+            refund = (price_refund if 'price_refund' in locals() else 0) + (seat_refund if 'seat_refund' in locals() else 0)
+            action_label = f"Price (${old_price} -> ${new_price}) and Seats ({old_seats} -> {new_seats}) Updated"
         elif record and record.action in [ActionType.SEAT_INCREASED, ActionType.SEAT_DECREASED]:
             old_seats, new_seats = record.old_values.get('seat_cap'), record.new_values.get('seat_cap')
+            display_seat_cap = new_seats
             if new_seats > old_seats:
                 seat_diff = new_seats - old_seats
                 owed = calculate_cost(seat_diff, seat_price, days_remaining) if days_remaining > 0 else 0
@@ -203,15 +234,30 @@ class RefundService:
                 refund = calculate_cost(seat_diff, seat_price, days_remaining) if days_remaining > 0 else 0
                 action_label = f"Seats Decreased ({old_seats} -> {new_seats})"
         else:
+            period_cost = calculate_cost(seat_cap, seat_price, total_days)
             refund = (period_cost * days_remaining) / total_days if days_remaining > 0 else 0
             action_label = label or (get_action_label(record) if record else "Period")
         
-        return create_period(action_label, period_start, period_end, seat_cap, seat_price, total_days, days_used, days_remaining, period_cost, refund, owed)
+        period_cost = calculate_cost(display_seat_cap, display_seat_price, total_days)
+        return create_period(action_label, period_start, period_end, display_seat_cap, display_seat_price, total_days, days_used, days_remaining, period_cost, refund, owed)
     
     @staticmethod
     def _calculate_after_renewal(license_instance, history, renewal, action_date):
-        post_renewal = history.filter(action_date__gte=renewal.action_date)
-        post_renewal_changes = post_renewal.filter(action__in=[ActionType.PRICE_UPDATED, ActionType.SEAT_INCREASED, ActionType.SEAT_DECREASED])
+        post_renewal_changes = history.filter(action_date__gt=renewal.action_date, action__in=[ActionType.PRICE_UPDATED, ActionType.SEAT_INCREASED, ActionType.SEAT_DECREASED, ActionType.PRICE_AND_SEAT_UPDATED])
+        
         if not post_renewal_changes.exists():
-            return RefundService._calculate_simple(license_instance, action_date)
-        return RefundService._calculate_with_changes(license_instance, post_renewal_changes, action_date)
+            total_days, days_used, days_remaining = calculate_days(renewal.action_date, license_instance.end_date, action_date)
+            total_cost = calculate_cost(license_instance.seat_cap, license_instance.seat_price, total_days)
+            refund = (total_cost * days_remaining) / total_days if days_remaining > 0 else 0
+            
+            period = create_period(f'After Renewal ({license_instance.seat_cap} seats × ${license_instance.seat_price})',
+                                 renewal.action_date, license_instance.end_date, license_instance.seat_cap, license_instance.seat_price,
+                                 total_days, days_used, days_remaining, total_cost, refund)
+            
+            return {'total_cost': round(total_cost, 2), 'total_refund': round(refund, 2), 'total_owed': 0.00, 'net_amount': round(refund, 2),
+                   'scenario': 'After Renewal - Simple', 'action_date': action_date, 'renewal_date': renewal.action_date, 'periods': [period]}
+        
+        modified_license = copy(license_instance)
+        modified_license.start_date = renewal.action_date
+        post_renewal_history = history.filter(action_date__gte=renewal.action_date)
+        return RefundService._calculate_with_changes(modified_license, post_renewal_history, action_date)
