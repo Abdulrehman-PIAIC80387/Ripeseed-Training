@@ -1,10 +1,8 @@
 from django.db.models.signals import post_save, pre_save
 from django.dispatch import receiver
-
 from licensing.models import License
 from common.constants import ActionType
 from common.utils import create_license_history
-
 
 @receiver(pre_save, sender=License)
 def store_old_values(sender, instance, **kwargs):

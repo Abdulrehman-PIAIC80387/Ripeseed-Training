@@ -101,36 +101,6 @@ def create_period(action, period_start, period_end, seat_cap, seat_price,days_to
         'owed': round(float(owed), 2)
     }
 
-
-def group_actions_by_date(history):
-    actions_by_date = {}
-    for record in history:
-        if record.action in [ActionType.CREATED, ActionType.PRICE_UPDATED, 
-                           ActionType.SEAT_INCREASED, ActionType.SEAT_DECREASED, ActionType.PRICE_AND_SEAT_UPDATED]:
-            date_key = record.action_date
-            if date_key not in actions_by_date:
-                actions_by_date[date_key] = []
-            actions_by_date[date_key].append(record)
-    return actions_by_date
-
-
-def get_net_price_change(price_records):
-    if not price_records:
-        return None, None
-    original_price = Decimal(str(price_records[0].old_values.get('seat_price')))
-    final_price = Decimal(str(price_records[-1].new_values.get('seat_price')))
-    return original_price, final_price
-
-
-def calculate_price_change_impact(seat_cap, old_price, new_price, days_used):
-    if new_price > old_price:
-        price_diff = new_price - old_price
-        owed = calculate_cost(seat_cap, price_diff, days_used)
-        return 0, owed, f"Price Increased (${old_price} → ${new_price}) - Client Owes"
-    else:
-        return 0, 0, f"Price Decreased (${old_price} → ${new_price}) - Refund"
-
-
 def get_action_label(record):
     if record.action == ActionType.SEAT_INCREASED:
         old_seats = record.old_values.get('seat_cap')
