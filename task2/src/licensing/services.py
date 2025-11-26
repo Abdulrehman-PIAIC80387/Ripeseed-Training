@@ -47,6 +47,29 @@ class LicenseService:
         
         return license_instance
 
+    @staticmethod
+    @transaction.atomic
+    def extend_license(license_instance, performed_by, action_date=None):
+        if action_date is None:
+            action_date = timezone.now().date()
+            
+        old_end_date = license_instance.end_date
+        new_end_date = license_instance.end_date + timezone.timedelta(days=30)
+        
+        license_instance.end_date = new_end_date
+        license_instance.save()
+        
+        create_license_history(
+            license=license_instance,
+            action=ActionType.EXTENDED,
+            performed_by=performed_by,
+            action_date=action_date,
+            old_values={'end_date': str(old_end_date)},
+            new_values={'end_date': str(new_end_date)},
+            notes=f"License extended by 30 days from {old_end_date} to {new_end_date}"
+        )
+        
+        return license_instance
 
     @staticmethod
     @transaction.atomic
@@ -65,8 +88,8 @@ class LicenseService:
             action_date=action_date,
             old_values={'is_active': True},
             new_values={'is_active': False},
-            refund_amount=refund_data['net_amount'],
-            notes=f"License deactivated on {action_date}. Net: ${refund_data['net_amount']}"
+            refund_amount=refund_data['total_refund'],
+            notes=f"License deactivated on {action_date}. refund: ${refund_data['total_refund']}"
         )
         
         return license_instance, refund_data
@@ -97,8 +120,8 @@ class RefundService:
                              total_days, days_used, days_remaining, total_cost, refund)
         
         return {
-            'total_cost': round(total_cost, 2), 'total_refund': round(refund, 2), 'total_owed': 0.00,
-            'net_amount': round(refund, 2), 'scenario': 'Simple - No Changes', 'action_date': action_date,
+            'total_cost': round(total_cost, 2), 'period_refund': round(refund, 2), 'total_owed': 0.00,
+            'outstanding_balance': 0.00, 'total_refund': round(refund, 2), 'scenario': 'Simple - No Changes', 'action_date': action_date,
             'periods': [period]
         }
     
@@ -106,25 +129,6 @@ class RefundService:
     @staticmethod
     def _calculate_with_changes(license_instance, history, action_date):
         periods, total_refund, total_owed = [], Decimal('0'), Decimal('0')
-        creation_record = history.filter(action=ActionType.CREATED).first()
-        original_seat_cap = creation_record.new_values.get('seat_cap') if creation_record else license_instance.seat_cap
-        original_seat_price = Decimal(str(creation_record.new_values.get('seat_price'))) if creation_record else license_instance.seat_price
-    
-        if (license_instance.seat_cap == original_seat_cap and license_instance.seat_price == original_seat_price):
-            total_days, days_used, days_remaining = calculate_days(license_instance.start_date, license_instance.end_date, action_date)
-            total_cost = get_total_cost(license_instance)
-            refund = (total_cost * days_remaining) / total_days if days_remaining > 0 else 0
-            
-            period = create_period('Reverted to Original - No Net Change', license_instance.start_date, license_instance.end_date,
-                                 license_instance.seat_cap, license_instance.seat_price, 
-                                 total_days, days_used, days_remaining, total_cost, refund)
-            
-            return {
-                'total_cost': round(total_cost, 2), 'total_refund': round(refund, 2), 'total_owed': 0.00,
-                'net_amount': round(refund, 2), 'scenario': 'Reverted to Original', 'action_date': action_date,
-                'periods': [period]
-            }
-        
         current_seat_cap, current_seat_price = license_instance.seat_cap, license_instance.seat_price
         
         for record in history.order_by('action_date'):
@@ -148,13 +152,12 @@ class RefundService:
                 current_seat_price = Decimal(str(record.new_values.get('seat_price')))
                 current_seat_cap = record.new_values.get('seat_cap')
         
-        net_amount= (round(total_refund - total_owed, 2))
-        if net_amount < 0:
-            net_amount = 0
+        outstanding_balance = round(total_owed - total_refund, 2) if total_owed > total_refund else 0
+        actual_refund = round(total_refund - total_owed, 2) if total_refund > total_owed else 0
         return {
-            'total_cost': round(get_total_cost(license_instance), 2), 'total_refund': round(total_refund, 2),
-            'total_owed': round(total_owed, 2), 'net_amount': net_amount,
-            'scenario': 'With Price/Capacity Changes', 'action_date': action_date, 'periods': periods
+            'total_cost': round(get_total_cost(license_instance), 2), 'period_refund': round(total_refund, 2),
+            'total_owed': round(total_owed, 2), 'outstanding_balance': outstanding_balance,
+            'total_refund': actual_refund, 'scenario': 'With Price/Capacity Changes', 'action_date': action_date, 'periods': periods
         }
     
     
@@ -184,24 +187,19 @@ class RefundService:
             
             if new_price > old_price:
                 price_diff = new_price - old_price
-                print(price_diff)
                 price_owed = calculate_cost(old_seats, price_diff, days_remaining) if days_remaining > 0 else 0
-                print(price_owed)
             else:
                 price_diff = old_price - new_price
                 price_refund = calculate_cost(old_seats, price_diff, days_remaining) if days_remaining > 0 else 0
             
             if new_seats > old_seats:
                 seat_diff = new_seats - old_seats
-                print(seat_diff)
                 seat_owed = calculate_cost(seat_diff, new_price, days_remaining) if days_remaining > 0 else 0
-                print(seat_owed)
             else:
                 seat_diff = old_seats - new_seats
                 seat_refund = calculate_cost(seat_diff, new_price, days_remaining) if days_remaining > 0 else 0
             
             owed = (price_owed if 'price_owed' in locals() else 0) + (seat_owed if 'seat_owed' in locals() else 0)
-            print("owend:",owed)
             refund = (price_refund if 'price_refund' in locals() else 0) + (seat_refund if 'seat_refund' in locals() else 0)
             action_label = f"Price (${old_price} -> ${new_price}) and Seats ({old_seats} -> {new_seats}) Updated"
         elif record and record.action in [ActionType.SEAT_INCREASED, ActionType.SEAT_DECREASED]:

@@ -30,7 +30,7 @@ class LicenseAdmin(admin.ModelAdmin):
     list_filter = ('is_active', 'start_date', 'end_date')
     search_fields = ('organization__name',)
     readonly_fields = ('refund_breakdown_display',)
-    actions = ['renew_licenses', 'deactivate_licenses']
+    actions = ['renew_licenses', 'extend_licenses', 'deactivate_licenses']
     
     fieldsets = (
         ('License Details', {
@@ -66,6 +66,14 @@ class LicenseAdmin(admin.ModelAdmin):
         
             messages.success(request, f"Renewed {queryset.count()} license(s)")
 
+    @admin.action(description=_('Extend selected licenses (30 days)'))
+    def extend_licenses(self, request, queryset):
+        for license_obj in queryset:
+            try:
+                LicenseService.extend_license(license_obj, performed_by=parse_admin_user(request))
+            except Exception as e:
+                messages.error(request, f"Error: {str(e)}")
+        messages.success(request, f"Extended {queryset.count()} license(s) by 30 days")
 
     @admin.action(description=_('Deactivate selected licenses'))
     def deactivate_licenses(self, request, queryset):
